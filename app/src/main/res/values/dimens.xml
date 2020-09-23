@@ -1,0 +1,8 @@
+<resources>
+    <dimen name="fab_margin">16dp</dimen>
+    <dimen name="padding_icon">8dp</dimen>
+    <dimen name="margin_screen">16dp</dimen>
+    <dimen name="margin_content">8dp</dimen>
+    <dimen name="padding_text">8dp</dimen>
+    <dimen name="section_margin">16dp</dimen>
+</resources>
