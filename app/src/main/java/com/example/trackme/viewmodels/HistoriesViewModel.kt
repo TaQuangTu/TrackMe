@@ -1,4 +1,4 @@
-package com.example.trackme.ui.main
+package com.example.trackme.viewmodels
 
 import androidx.lifecycle.ViewModel
 

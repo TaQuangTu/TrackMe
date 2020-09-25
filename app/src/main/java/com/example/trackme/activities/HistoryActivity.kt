@@ -1,10 +1,9 @@
-package com.example.trackme
+package com.example.trackme.activities
 
-import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import com.example.trackme.ui.main.HistoryFragment
-import kotlinx.android.synthetic.main.main_fragment.*
+import com.example.trackme.R
+import com.example.trackme.fragments.HistoryFragment
 
 class HistoryActivity : AppCompatActivity() {
 

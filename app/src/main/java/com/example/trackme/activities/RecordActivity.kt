@@ -1,8 +1,9 @@
-package com.example.trackme
+package com.example.trackme.activities
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import com.example.trackme.ui.main.RecordFragment
+import com.example.trackme.R
+import com.example.trackme.fragments.RecordFragment
 
 class RecordActivity : AppCompatActivity() {
 

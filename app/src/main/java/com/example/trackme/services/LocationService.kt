@@ -15,7 +15,8 @@ import androidx.core.app.NotificationCompat
 import androidx.room.Room
 import com.example.trackme.data.AppDatabase
 import com.example.trackme.data.History
-import com.example.trackme.ui.main.RecordFragment.Companion.SESSION_ID
+import com.example.trackme.fragments.RecordFragment.Companion.SESSION_ID
+import com.example.trackme.utils.LocationHelper
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -140,9 +141,9 @@ class LocationService : Service() {
     }
 
     fun saveToDatabase() {
-        val distance = 0.0
-        val velocity = 0.0
-        val history = History(mSessionId, mPoints, distance, velocity)
+        val distance = LocationHelper.distance(mPoints)
+        val time = LocationHelper.timeInSeconds(mPoints)
+        val history = History(mSessionId, mPoints, distance, distance / time)
         Room.databaseBuilder(
             applicationContext,
             AppDatabase::class.java, "TRACKME"

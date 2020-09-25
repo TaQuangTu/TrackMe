@@ -1,4 +1,4 @@
-package com.example.trackme.ui.main
+package com.example.trackme.fragments
 
 import android.Manifest
 import android.app.ActivityManager
@@ -15,20 +15,27 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
-import com.example.trackme.MessageDialog
+import com.example.trackme.dialogs.MessageDialog
 import com.example.trackme.R
+import com.example.trackme.data.Point
+import com.example.trackme.viewmodels.RecordViewModel
 import com.example.trackme.services.LocationService
 import com.example.trackme.services.LocationService.Companion.LAT
 import com.example.trackme.services.LocationService.Companion.LNG
 import com.example.trackme.services.LocationService.Companion.ACTION_LOCATION_UPDATE
-import com.example.trackme.ui.main.RecordViewModel.Companion.STATE_PAUSE
-import com.example.trackme.ui.main.RecordViewModel.Companion.STATE_RECORDING
+import com.example.trackme.services.LocationService.Companion.TIME
+import com.example.trackme.viewmodels.RecordViewModel.Companion.STATE_PAUSE
+import com.example.trackme.viewmodels.RecordViewModel.Companion.STATE_RECORDING
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.*
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.tasks.Task
 import kotlinx.android.synthetic.main.main_fragment2.*
 import java.util.*
@@ -45,6 +52,7 @@ class RecordFragment : Fragment(), OnMapReadyCallback {
     private lateinit var viewModel: RecordViewModel
     private var messageDialog: MessageDialog? = null
     private lateinit var mLocationBroadcastReceiver: BroadcastReceiver
+    private var mGoogleMap: GoogleMap? = null
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -57,11 +65,27 @@ class RecordFragment : Fragment(), OnMapReadyCallback {
         viewModel = ViewModelProvider(this).get(RecordViewModel::class.java)
         fragmentMap = childFragmentManager.findFragmentByTag("fragmentMap") as SupportMapFragment
         fragmentMap.getMapAsync(this)
-
+        observeViewModel()
         if (isFineLocationPermissionGuaranteed()) {
             checkLocalSettings() //check if "Your Location" turned on
         } else {
             requestFineLocationPermission()
+        }
+    }
+
+    fun observeViewModel() {
+        viewModel.mNewPoint.observe(viewLifecycleOwner,
+            Observer<Point> {
+                drawNewPoint(it)
+            })
+    }
+
+    private fun drawNewPoint(point: Point) {
+        mGoogleMap?.let {
+            val latlng = LatLng(point.lat, point.lng)
+            val markerOptions = MarkerOptions().position(latlng)
+            it.addMarker(markerOptions)
+            it.moveCamera(CameraUpdateFactory.newLatLngZoom(latlng, 14f))
         }
     }
 
@@ -90,11 +114,14 @@ class RecordFragment : Fragment(), OnMapReadyCallback {
         }
         mLocationBroadcastReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
-                Toast.makeText(
-                    context,
-                    "" + intent?.getDoubleExtra(LAT, 0.0) + "," + intent?.getDoubleExtra(LNG, 0.0),
-                    Toast.LENGTH_SHORT
-                ).show()
+                if (intent != null && intent.action == ACTION_LOCATION_UPDATE) {
+                    val lat = intent.getDoubleExtra(LAT, 0.0)
+                    val lng = intent.getDoubleExtra(LNG, 0.0)
+                    val time = intent.getLongExtra(TIME, 0)
+                    val sessionId = intent.getStringExtra(SESSION_ID)
+                    val point = Point(time, lat, lng, sessionId!!)
+                    viewModel.mNewPoint.value = point
+                }
             }
         }
         context!!.registerReceiver(mLocationBroadcastReceiver, filter)
@@ -114,6 +141,10 @@ class RecordFragment : Fragment(), OnMapReadyCallback {
                 ContextCompat.startForegroundService(context!!, it)
             }
         }
+        else{ //ask for state of running service (pause or running)
+
+        }
+        presentData()
     }
 
     override fun onResume() {
@@ -122,10 +153,10 @@ class RecordFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun presentData() {
-        if (viewModel.mRecordState == STATE_RECORDING) {
+        if (viewModel.mRecordState.value == STATE_RECORDING) {
             lnActions.visibility = GONE
             imvPause.visibility = VISIBLE
-        } else if (viewModel.mRecordState == STATE_PAUSE) {
+        } else if (viewModel.mRecordState.value == STATE_PAUSE) {
             lnActions.visibility = VISIBLE
             imvPause.visibility = GONE
         } else { //state NONE
@@ -157,7 +188,8 @@ class RecordFragment : Fragment(), OnMapReadyCallback {
                     // and check the result in onActivityResult().
                     exception.startResolutionForResult(
                         this@RecordFragment.activity,
-                        REQUEST_PERMISSION_CODE)
+                        REQUEST_PERMISSION_CODE
+                    )
                 } catch (sendEx: IntentSender.SendIntentException) {
                     // Ignore the error.
                 }
@@ -219,6 +251,6 @@ class RecordFragment : Fragment(), OnMapReadyCallback {
     }
 
     override fun onMapReady(p0: GoogleMap?) {
-        val a = 0
+        mGoogleMap = p0
     }
 }

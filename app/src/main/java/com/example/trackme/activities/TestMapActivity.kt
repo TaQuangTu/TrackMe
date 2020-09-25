@@ -1,14 +1,13 @@
-package com.example.trackme
+package com.example.trackme.activities
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import com.example.trackme.R
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
-import kotlinx.android.synthetic.main.activity_test_map.*
-import kotlinx.android.synthetic.main.view_history.*
 import kotlinx.android.synthetic.main.view_history.fragmentMap
 
 class TestMapActivity : AppCompatActivity(), OnMapReadyCallback {
