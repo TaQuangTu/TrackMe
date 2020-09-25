@@ -15,7 +15,7 @@
         android:theme="@style/AppTheme">
         <activity android:name=".RecordActivity"></activity>
         <activity android:name=".TestMapActivity" />
-
+        <service android:name=".services.LocationService" android:exported="false" android:description="@string/app_name"/>
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="@string/google_api_key" />

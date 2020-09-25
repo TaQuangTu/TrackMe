@@ -1,5 +1,8 @@
 package com.example.trackme.data
 
-import android.graphics.Point
+import androidx.room.ColumnInfo
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 
-data class History(val points: ArrayList<Point>)
+@Entity
+data class History(@PrimaryKey val session:String, @ColumnInfo(name = "points") val points: String, var distance:Double, var avgVelocity:Double)
