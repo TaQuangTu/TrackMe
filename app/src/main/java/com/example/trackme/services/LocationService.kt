@@ -11,23 +11,29 @@ import android.content.IntentFilter
 import android.os.Build
 import android.os.IBinder
 import android.os.Looper
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.room.Room
 import com.example.trackme.data.AppDatabase
 import com.example.trackme.data.History
+import com.example.trackme.fragments.RecordFragment.Companion.ACTION_ASK_FOR_RUNNING_STATE
+import com.example.trackme.fragments.RecordFragment.Companion.RECORD_STATE
 import com.example.trackme.fragments.RecordFragment.Companion.SESSION_ID
 import com.example.trackme.utils.LocationHelper
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.schedulers.Schedulers
 
 class LocationService : Service() {
-    lateinit var mFusedLocationProviderClient: FusedLocationProviderClient
-    lateinit var mLocationCallback: LocationCallback
+    private lateinit var mFusedLocationProviderClient: FusedLocationProviderClient
+    private lateinit var mLocationCallback: LocationCallback
     lateinit var mSessionId: String
-    var mPoints: String = ""  //recorded points will be save under string format
-    var mRecordState = ACTION_NONE
+    private var mPoints: String = ""  //recorded points will be save under string format
+    var mRecordState = STATE_RUNNING
 
     companion object {
         const val TAG = "location service test"
@@ -38,11 +44,15 @@ class LocationService : Service() {
 
         const val ACTION_LOCATION_UPDATE = "LOCATION_UPDATE"
         const val ACTION_ACTIVITY_CONTROL_CHANGE = "ACTION_ACTIVITY_CONTROL_CHANGE"
-
+        const val ACTION_RESPONSE_FOR_ASKING_RECORD_STATE =
+            "ACTION_RESPONSE_FOR_ASKING_RECORD_STATE"
         const val ACTION_NONE = 0 //running
         const val ACTION_PAUSE = 1
         const val ACTION_RESUME = 2
         const val ACTION_STOP = 3
+
+        const val STATE_PAUSE = 4
+        const val STATE_RUNNING = 5
 
         const val LAT = "LAT"
         const val LNG = "LNG"
@@ -66,7 +76,7 @@ class LocationService : Service() {
     @SuppressLint("MissingPermission")
     override fun onCreate() {
         super.onCreate()
-        listenToActivityControls()
+        registReceivers()
     }
 
     override fun onBind(intent: Intent?): IBinder? {
@@ -89,7 +99,8 @@ class LocationService : Service() {
                     .build()
             startForeground(NOTIFICATION_ID, notification)
         }
-        listenToLocationUpdate(intent)
+        mSessionId = intent!!.getStringExtra(SESSION_ID)!!
+        listenToLocationUpdate()
         return START_STICKY
     }
 
@@ -99,54 +110,98 @@ class LocationService : Service() {
     }
 
     @SuppressLint("MissingPermission")
-    fun listenToLocationUpdate(intent: Intent?) {
+    fun listenToLocationUpdate() {
         mFusedLocationProviderClient = FusedLocationProviderClient(this)
         mLocationCallback = object : LocationCallback() {
             override fun onLocationResult(p0: LocationResult?) {
                 p0?.let {
-                    if (mRecordState == ACTION_NONE) {
+                    if (mRecordState == STATE_RUNNING) {
                         val intent = Intent()
-                        intent.action = ACTION_LOCATION_UPDATE
-                        intent.putExtra(LAT, p0?.lastLocation.latitude)
-                        intent.putExtra(LNG, p0?.lastLocation.longitude)
+                        val lat = p0.lastLocation.latitude
+                        val lng = p0.lastLocation.longitude
                         val time = System.currentTimeMillis()
+                        intent.action = ACTION_LOCATION_UPDATE
+                        intent.putExtra(LAT, lat)
+                        intent.putExtra(LNG, lng)
                         intent.putExtra(TIME, time)
                         intent.putExtra(SESSION_ID, mSessionId)
+                        mPoints = LocationHelper.addPoint(mPoints, lat, lng, time, mSessionId)
                         sendBroadcast(intent)
                     }
                 }
             }
         }
-        mSessionId = intent!!.getStringExtra(SESSION_ID)!!
         mFusedLocationProviderClient.requestLocationUpdates(
             LocationUtils.getLocationRequest(), mLocationCallback,
             Looper.getMainLooper()
         )
     }
 
-    private fun listenToActivityControls() {
-        val intentFilter = IntentFilter().apply { addAction(ACTION_ACTIVITY_CONTROL_CHANGE) }
+    private fun registReceivers() {
+        //regist receiver for action changes from fragment like pressing a button,..
+        val intentFilter = IntentFilter().apply {
+            addAction(ACTION_ACTIVITY_CONTROL_CHANGE)
+            addAction(ACTION_ASK_FOR_RUNNING_STATE)
+        }
         registerReceiver(object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 if (intent == null) return
-                mRecordState = intent.getIntExtra(ACTION_ACTIVITY_CONTROL_CHANGE, ACTION_NONE)
-                if (mRecordState == ACTION_STOP) {
-                    saveToDatabase()
-                    stopSelf()
-                } else if (mRecordState == ACTION_RESUME) {
-                    mRecordState = ACTION_NONE //mean that user want to continue recording location
+                if (intent.action == ACTION_ACTIVITY_CONTROL_CHANGE) {
+                    val action = intent.getIntExtra(RECORD_STATE, ACTION_NONE)
+                    if (action == ACTION_STOP) {
+                        saveToDatabase().subscribeOn(Schedulers.newThread())
+                            .observeOn(AndroidSchedulers.mainThread()).subscribe(
+                                {
+                                    stopSelf()
+                                }, {
+                                    Toast.makeText(
+                                        context!!,
+                                        it.localizedMessage,
+                                        Toast.LENGTH_SHORT
+                                    )
+                                        .show()
+                                }
+                            )
+                    } else if (action == ACTION_PAUSE) {
+                        mRecordState = STATE_PAUSE
+                    } else if (action == ACTION_RESUME) {
+                        mRecordState = STATE_RUNNING
+                    }
+                } else if (intent.action == ACTION_ASK_FOR_RUNNING_STATE) {
+                    //save all points at this time
+                    saveToDatabase().subscribeOn(Schedulers.newThread())
+                        .observeOn(AndroidSchedulers.mainThread()).subscribe({
+                            //immediately send response to the asker
+                            context?.sendBroadcast(Intent().apply {
+                                action = ACTION_RESPONSE_FOR_ASKING_RECORD_STATE
+                                putExtra(RECORD_STATE, mRecordState)
+                                putExtra(SESSION_ID, mSessionId)
+                            })
+                        }, {
+                            Toast.makeText(context!!, it.localizedMessage, Toast.LENGTH_SHORT)
+                                .show()
+                        })
                 }
             }
         }, intentFilter)
     }
 
-    fun saveToDatabase() {
-        val distance = LocationHelper.distance(mPoints)
-        val time = LocationHelper.timeInSeconds(mPoints)
-        val history = History(mSessionId, mPoints, distance, distance / time)
-        Room.databaseBuilder(
-            applicationContext,
-            AppDatabase::class.java, "TRACKME"
-        ).build().historyDao().insertAll(history)
+    fun saveToDatabase(): Observable<Unit> {
+        return Observable.fromCallable {
+            val database = Room.databaseBuilder(
+                applicationContext,
+                AppDatabase::class.java, AppDatabase.NAME
+            ).build()
+            //check if session exists
+            val history = database.historyDao().findBySession(mSessionId)
+            val distance = LocationHelper.distance(mPoints)
+            val time = LocationHelper.timeInSeconds(mPoints)
+            val newHistory = History(mSessionId, mPoints, distance, distance / time)
+            if (history != null) { //the session exists
+                database.historyDao().update(newHistory)
+            } else { //history does not exist
+                database.historyDao().insertAll(newHistory)
+            }
+        }
     }
 }

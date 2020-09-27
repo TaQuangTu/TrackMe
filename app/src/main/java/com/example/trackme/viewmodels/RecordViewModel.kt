@@ -10,7 +10,8 @@ class RecordViewModel : ViewModel() {
         val STATE_PAUSE = 1
         val STATE_RECORDING = 2
     }
-    var mRecordState = MutableLiveData<Int>(STATE_NONE)
-    var mPointArray = MutableLiveData<ArrayList<Point>>()
+    var mSessionId = MutableLiveData<String>()
+    var mRecordState = MutableLiveData<Int>(STATE_RECORDING)
+    var mPointArray = MutableLiveData<ArrayList<Point>>(ArrayList())
     var mNewPoint = MutableLiveData<Point>()
 }
