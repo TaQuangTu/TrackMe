@@ -40,7 +40,7 @@ class HistoryFragment : Fragment() {
         swipeRefreshLayout.setOnRefreshListener {
             fetchData()
         }
-        rcvHistories.layoutManager = LinearLayoutManager(context!!, RecyclerView.VERTICAL, false)
+        rcvHistories.layoutManager = LinearLayoutManager(context!!, RecyclerView.VERTICAL, true)
         rcvHistories.adapter = HistoriesAdapter()
     }
 

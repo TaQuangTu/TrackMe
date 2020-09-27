@@ -22,8 +22,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.room.Room
 import com.example.trackme.R
 import com.example.trackme.data.AppDatabase
-import com.example.trackme.data.History
 import com.example.trackme.data.Point
+import com.example.trackme.dialogs.LoadingDialog
 import com.example.trackme.dialogs.MessageDialog
 import com.example.trackme.services.LocationService
 import com.example.trackme.services.LocationService.Companion.ACTION_ACTIVITY_CONTROL_CHANGE
@@ -75,6 +75,8 @@ class RecordFragment : Fragment(), OnMapReadyCallback, View.OnClickListener {
     private var messageDialog: MessageDialog? = null
     private lateinit var mLocationBroadcastReceiver: BroadcastReceiver
     private var mGoogleMap: GoogleMap? = null
+    private val mLoadingDialog: LoadingDialog = LoadingDialog("Loading session")
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -153,17 +155,9 @@ class RecordFragment : Fragment(), OnMapReadyCallback, View.OnClickListener {
                     } else if (intent.action == ACTION_RESPONSE_FOR_ASKING_RECORD_STATE) {
                         viewModel.mRecordState.value = intent.getIntExtra(RECORD_STATE, STATE_NONE)
                         viewModel.mSessionId.value = intent.getStringExtra(SESSION_ID)
+
                         //reload current state
                         loadHistory(viewModel.mSessionId.value!!)
-                            .observeOn(AndroidSchedulers.mainThread())
-                            .subscribeOn(Schedulers.newThread())
-                            .subscribe({
-                                viewModel.mPointArray.value =
-                                    LocationHelper.stringToArrayList(it.points)
-                            }, {
-                                Toast.makeText(context!!, it.localizedMessage, Toast.LENGTH_SHORT)
-                                    .show()
-                            })
                     }
                 }
             }
@@ -346,12 +340,33 @@ class RecordFragment : Fragment(), OnMapReadyCallback, View.OnClickListener {
         })
     }
 
-    fun loadHistory(sessionId: String): Observable<History> {
-        return Observable.fromCallable {
+    fun loadHistory(sessionId: String) {
+        showLoading()
+        Observable.fromCallable {
             Room.databaseBuilder(
                 context!!,
                 AppDatabase::class.java, AppDatabase.NAME
             ).build().historyDao().findBySession(sessionId)
+        }.observeOn(AndroidSchedulers.mainThread())
+            .subscribeOn(Schedulers.newThread())
+            .subscribe({
+                viewModel.mPointArray.value =
+                    LocationHelper.stringToArrayList(it.points)
+                hideLoading()
+            }, {
+                Toast.makeText(context!!, it.localizedMessage, Toast.LENGTH_SHORT)
+                    .show()
+                hideLoading()
+            })
+    }
+    fun showLoading(){
+        if(!mLoadingDialog.isVisible){
+            mLoadingDialog.show(childFragmentManager,"LOADING_DIALOG")
+        }
+    }
+    fun hideLoading(){
+        if(!mLoadingDialog.isVisible){
+            mLoadingDialog.dismiss()
         }
     }
 }
