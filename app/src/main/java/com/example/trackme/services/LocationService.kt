@@ -124,8 +124,7 @@ class LocationService : Service() {
                         intent.putExtra(LAT, lat)
                         intent.putExtra(LNG, lng)
                         intent.putExtra(TIME, time)
-                        intent.putExtra(SESSION_ID, mSessionId)
-                        mPoints = LocationHelper.addPoint(mPoints, lat, lng, time, mSessionId)
+                        mPoints = LocationHelper.addPoint(mPoints, lat, lng, time)
                         sendBroadcast(intent)
                     }
                 }

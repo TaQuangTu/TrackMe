@@ -33,7 +33,7 @@ class HistoriesAdapter : RecyclerView.Adapter<HistoriesAdapter.HistoryViewHolder
     override fun onBindViewHolder(holder: HistoryViewHolder, position: Int) {
         val history = mData!![position]
         history?.let {
-            Glide.with(holder.itemView.context).load(LocationHelper.getStaticMapUrl(history))
+            Glide.with(holder.itemView.context).load(LocationHelper.getStaticMapUrl(history)).placeholder(R.drawable.place_holder_map)
                 .into(holder.itemView.imvMap)
             val distance = LocationHelper.distance(history.points)
             val time = LocationHelper.timeInSeconds(history.points)

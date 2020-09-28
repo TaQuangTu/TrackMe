@@ -4,6 +4,8 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
+import android.view.View.GONE
+import android.view.View.VISIBLE
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
@@ -40,7 +42,7 @@ class HistoryFragment : Fragment() {
         swipeRefreshLayout.setOnRefreshListener {
             fetchData()
         }
-        rcvHistories.layoutManager = LinearLayoutManager(context!!, RecyclerView.VERTICAL, true)
+        rcvHistories.layoutManager = LinearLayoutManager(context!!, RecyclerView.VERTICAL, false)
         rcvHistories.adapter = HistoriesAdapter()
     }
 
@@ -64,6 +66,14 @@ class HistoryFragment : Fragment() {
 
     fun presentData() {
         swipeRefreshLayout.isRefreshing = false
-        (rcvHistories.adapter as HistoriesAdapter).mData = viewModel.histories.value
+        if (viewModel.histories.value == null) {
+            tvHistoryEmptyMessage.visibility = VISIBLE
+            swipeRefreshLayout.visibility = GONE
+        }
+        else{
+            (rcvHistories.adapter as HistoriesAdapter).mData = viewModel.histories.value?.reversed()
+            tvHistoryEmptyMessage.visibility = GONE
+            swipeRefreshLayout.visibility = VISIBLE
+        }
     }
 }

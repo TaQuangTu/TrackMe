@@ -15,13 +15,12 @@ object LocationHelper {
         currentString: String,
         lat: Double,
         lng: Double,
-        time: Long,
-        sessionId: String
+        time: Long
     ): String {
         return if (currentString == "") {
-            "$lat,$lng,$time,$sessionId"
+            "$lat,$lng,$time"
         } else {
-            "$currentString*$lat,$lng,$time,$sessionId"
+            "$currentString*$lat,$lng,$time"
         }
     }
 
@@ -31,12 +30,11 @@ object LocationHelper {
         val pointArray = points.split("*")
         for (pointItems in pointArray) {
             val pointItemArray = pointItems.split(",")
-            if (pointItemArray.size == 4) {
+            if (pointItemArray.size == 3) {
                 val lat = pointItemArray[0].trim().toDouble()
                 val lng = pointItemArray[1].trim().toDouble()
                 val time = pointItemArray[2].trim().toLong()
-                val sessionId = pointItemArray[3].trim()
-                result.add(Point(time, lat, lng, sessionId))
+                result.add(Point(time, lat, lng))
             }
         }
         return result
@@ -107,9 +105,10 @@ object LocationHelper {
     }
 
     fun getStaticMapUrl(history: History): String {
+        var pointArray = stringToArrayList(history.points)
+        pointArray = smoothPath(pointArray)
         var url = "https://maps.googleapis.com/maps/api/staticmap?size=420x225&path="
         var path = ""
-        val pointArray = stringToArrayList(history.points);
         for (point in pointArray) {
             path = path + point.lat + "," + point.lng + "|"
         }
@@ -128,5 +127,29 @@ object LocationHelper {
             url + path + markerParams + "&key=" + TrackMeApplication.appContext!!.getString(R.string.google_api_key)
         Log.d("TAG", "getStaticMapUrl: $url")
         return url
+    }
+
+    /**
+     * this function is used to remove points that are similar to each other, it helps making google static map URL shorter
+     */
+    fun smoothPath(points: ArrayList<Point>): ArrayList<Point> {
+        val threshold = 2f //2 meter
+        if (points.size <= 50) { //it's ok for google static map API with an array of points of size 50
+            return points
+        }
+        val step = points.size / 50
+        val shortestList = ArrayList<Point>()
+        shortestList.add(points[0])
+        for (i in 1 until points.size - 1 step step) {
+            val distances = floatArrayOf(0f)
+            val sP = points[i - 1]
+            val eP = points[i]
+            Location.distanceBetween(sP.lat, sP.lng, eP.lat, eP.lng, distances)
+            if (distances[0] > threshold) {
+                shortestList.add(eP)
+            }
+        }
+        shortestList.add(points[points.size - 1])
+        return shortestList
     }
 }

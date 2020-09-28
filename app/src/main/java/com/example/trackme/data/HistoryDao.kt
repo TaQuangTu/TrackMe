@@ -7,7 +7,7 @@ interface HistoryDao {
     @Query("SELECT * FROM History")
     fun getAll(): List<History>
 
-    @Query("SELECT * FROM History WHERE session IN (:sessions)")
+    @Query("SELECT * FROM History WHERE session IN (:sessions)" )
     fun loadAllByIds(sessions: IntArray): List<History>
 
     @Query("SELECT * FROM History WHERE session LIKE :sessionId")

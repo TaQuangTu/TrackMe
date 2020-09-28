@@ -4,6 +4,17 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <TextView
+        android:gravity="center"
+        android:padding="@dimen/padding_text"
+        android:id="@+id/tvHistoryEmptyMessage"
+        app:layout_constraintBottom_toTopOf="@+id/btnRecord"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/no_session_found"
+        android:visibility="gone" />
+
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:layout_marginBottom="@dimen/margin_content"
         android:id="@+id/swipeRefreshLayout"
@@ -11,6 +22,7 @@
         android:layout_height="0dp"
         app:layout_constraintBottom_toTopOf="@+id/btnRecord"
         app:layout_constraintTop_toTopOf="parent">
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rcvHistories"
             android:layout_width="match_parent"

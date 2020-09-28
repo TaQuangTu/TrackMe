@@ -3,19 +3,43 @@ package com.example.trackme.dialogs
 import android.app.AlertDialog
 import android.app.Dialog
 import android.os.Bundle
+import android.widget.TextView
 import androidx.fragment.app.DialogFragment
+import androidx.fragment.app.FragmentManager
 import com.example.trackme.R
-import kotlinx.android.synthetic.main.dialog_loading.*
 
-class LoadingDialog(var message:String) : DialogFragment() {
+class LoadingDialog(var mMessage: String) : DialogFragment() {
+    var isShowing = false
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
+        isCancelable = false
         var alertDialogBuilder = AlertDialog.Builder(context!!)
         alertDialogBuilder.setView(R.layout.dialog_loading)
+        alertDialogBuilder.setCancelable(false)
         return alertDialogBuilder.create()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        dialog?.window?.setBackgroundDrawable(null)
     }
 
     override fun onResume() {
         super.onResume()
-        tvMessage.text = message
+        (dialog?.findViewById(R.id.tvMessage) as TextView).text = mMessage
+    }
+
+    public fun show(fragmentManager: FragmentManager, tag: String, message: String) {
+        if (!isShowing) {
+            mMessage = message
+            showNow(fragmentManager, tag)
+            isShowing = true
+        }
+    }
+
+    fun dismissNow(childFragmentManager: FragmentManager) {
+        if (isShowing) {
+            childFragmentManager.beginTransaction().remove(this).commitNowAllowingStateLoss()
+            isShowing = false
+        }
     }
 }

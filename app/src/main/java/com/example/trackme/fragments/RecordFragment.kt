@@ -76,7 +76,7 @@ class RecordFragment : Fragment(), OnMapReadyCallback, View.OnClickListener {
     private lateinit var mLocationBroadcastReceiver: BroadcastReceiver
     private var mGoogleMap: GoogleMap? = null
     private val mLoadingDialog: LoadingDialog = LoadingDialog("Loading session")
-
+    private var mNeedToBoundMap = true
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -143,13 +143,13 @@ class RecordFragment : Fragment(), OnMapReadyCallback, View.OnClickListener {
         }
         mLocationBroadcastReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
+                hideLoading() //hide loading if needed
                 if (intent != null) {
                     if (intent.action == ACTION_LOCATION_UPDATE) {
                         val lat = intent.getDoubleExtra(LAT, 0.0)
                         val lng = intent.getDoubleExtra(LNG, 0.0)
                         val time = intent.getLongExtra(TIME, 0)
-                        val sessionId = intent.getStringExtra(SESSION_ID)
-                        val point = Point(time, lat, lng, sessionId!!)
+                        val point = Point(time, lat, lng)
                         viewModel.mPointArray.value!!.add(point)
                         viewModel.mNewPoint.value = point
                     } else if (intent.action == ACTION_RESPONSE_FOR_ASKING_RECORD_STATE) {
@@ -173,17 +173,21 @@ class RecordFragment : Fragment(), OnMapReadyCallback, View.OnClickListener {
 
     private fun startLocationTracking() {
         registReceivers()
+        var loadingMessage = ""
         if (!isLocationServiceRunning(LocationService::class.java)) { //if service have not run, start new one
+            loadingMessage = "Finding your location..."
             Intent(context!!, LocationService::class.java).also {
                 viewModel.mSessionId.value = UUID.randomUUID().toString()
                 it.putExtra(SESSION_ID, viewModel.mSessionId.value)
                 ContextCompat.startForegroundService(context!!, it)
             }
         } else { //ask for state of running service (pause or running)
+            loadingMessage = "Loading old session"
             context!!.sendBroadcast(Intent().apply {
                 action = ACTION_ASK_FOR_RUNNING_STATE
             })
         }
+        showLoading(loadingMessage)
         presentData()
     }
 
@@ -253,10 +257,11 @@ class RecordFragment : Fragment(), OnMapReadyCallback, View.OnClickListener {
                 try {
                     // Show the dialog by calling startResolutionForResult(),
                     // and check the result in onActivityResult().
-                    exception.startResolutionForResult(
-                        this@RecordFragment.activity,
-                        REQUEST_PERMISSION_CODE
-                    )
+                    startIntentSenderForResult(exception.resolution.intentSender,REQUEST_PERMISSION_CODE,null,0,0,0,null)
+//                    exception.startResolutionForResult(
+//                        this@RecordFragment.activity,
+//                        REQUEST_PERMISSION_CODE
+//                    )
                 } catch (sendEx: IntentSender.SendIntentException) {
                     // Ignore the error.
                 }
@@ -283,6 +288,12 @@ class RecordFragment : Fragment(), OnMapReadyCallback, View.OnClickListener {
         }
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if(requestCode==REQUEST_PERMISSION_CODE){
+
+        }
+    }
     private fun showPermissionExplanationDialog() {
         if (messageDialog == null) {
             messageDialog = MessageDialog().apply {
@@ -314,7 +325,10 @@ class RecordFragment : Fragment(), OnMapReadyCallback, View.OnClickListener {
 
     override fun onDestroy() {
         super.onDestroy()
-        context!!.unregisterReceiver(mLocationBroadcastReceiver)
+        mLocationBroadcastReceiver?.let {
+            context!!.unregisterReceiver(it)
+        }
+
     }
 
     override fun onMapReady(p0: GoogleMap?) {
@@ -341,7 +355,7 @@ class RecordFragment : Fragment(), OnMapReadyCallback, View.OnClickListener {
     }
 
     fun loadHistory(sessionId: String) {
-        showLoading()
+        showLoading("Loading data from previous session")
         Observable.fromCallable {
             Room.databaseBuilder(
                 context!!,
@@ -359,14 +373,10 @@ class RecordFragment : Fragment(), OnMapReadyCallback, View.OnClickListener {
                 hideLoading()
             })
     }
-    fun showLoading(){
-        if(!mLoadingDialog.isVisible){
-            mLoadingDialog.show(childFragmentManager,"LOADING_DIALOG")
-        }
+    fun showLoading(text:String = "Loading session data"){
+        mLoadingDialog.show(childFragmentManager,"LOADING_DIALOG",text)
     }
     fun hideLoading(){
-        if(!mLoadingDialog.isVisible){
-            mLoadingDialog.dismiss()
-        }
+        mLoadingDialog.dismissNow(childFragmentManager)
     }
 }
