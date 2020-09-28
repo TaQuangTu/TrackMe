@@ -11,17 +11,17 @@ import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.schedulers.Schedulers
 
 class HistoriesViewModel : ViewModel() {
-    val histories = MutableLiveData<List<History>>()
-    val message = MutableLiveData<String>()
+    val mHistories = MutableLiveData<List<History>>()
+    val mLiveMessage = MutableLiveData<String>()  //live message for errors, or messages
 
     fun loadAllHistory() {
         loadDatabase().map {
             it.historyDao().getAll()
         }.subscribeOn(Schedulers.newThread()).observeOn(AndroidSchedulers.mainThread())
             .subscribe({
-                histories.value = it
+                mHistories.value = it
             }, {
-                message.value = it.localizedMessage
+                mLiveMessage.value = it.localizedMessage
             })
     }
 

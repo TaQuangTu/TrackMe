@@ -10,6 +10,7 @@
     <string name="hello_first_fragment">Hello first fragment</string>
     <string name="hello_second_fragment">Hello second fragment. Arg: %1$s</string>
     <string name="google_api_key">AIzaSyCASCbz7A0Ogx6znHyPsttqLWTTk0vri28</string>
-    <string name="no_session_found">No session found</string>
+    <string name="no_session_found">No session recorded</string>
+    <string name="exit_message">TrackMe will still run in background even if you exit this screen as long as Wifi or 3G/4G are available. Are you OK with that? If not, stop this session before leaving.</string>
 </resources>
 

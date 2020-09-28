@@ -12,10 +12,10 @@
         app:layout_constraintTop_toTopOf="parent"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/no_session_found"
-        android:visibility="gone" />
+        android:text="@string/no_session_found" />
 
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:visibility="gone"
         android:layout_marginBottom="@dimen/margin_content"
         android:id="@+id/swipeRefreshLayout"
         android:layout_width="match_parent"

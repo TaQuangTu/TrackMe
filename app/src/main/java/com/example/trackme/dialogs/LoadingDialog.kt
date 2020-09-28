@@ -9,9 +9,8 @@ import androidx.fragment.app.FragmentManager
 import com.example.trackme.R
 
 class LoadingDialog(var mMessage: String) : DialogFragment() {
-    var isShowing = false
+    var mIsShowing = false
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        isCancelable = false
         var alertDialogBuilder = AlertDialog.Builder(context!!)
         alertDialogBuilder.setView(R.layout.dialog_loading)
         alertDialogBuilder.setCancelable(false)
@@ -28,18 +27,18 @@ class LoadingDialog(var mMessage: String) : DialogFragment() {
         (dialog?.findViewById(R.id.tvMessage) as TextView).text = mMessage
     }
 
-    public fun show(fragmentManager: FragmentManager, tag: String, message: String) {
-        if (!isShowing) {
-            mMessage = message
-            showNow(fragmentManager, tag)
-            isShowing = true
+    fun show(fragmentManager: FragmentManager, tag: String, message: String) {
+        mMessage = message
+        if (!mIsShowing) {
+            fragmentManager.beginTransaction().add(this,tag).commitNowAllowingStateLoss()
+            mIsShowing = true
         }
     }
 
     fun dismissNow(childFragmentManager: FragmentManager) {
-        if (isShowing) {
+        if (mIsShowing) {
             childFragmentManager.beginTransaction().remove(this).commitNowAllowingStateLoss()
-            isShowing = false
+            mIsShowing = false
         }
     }
 }

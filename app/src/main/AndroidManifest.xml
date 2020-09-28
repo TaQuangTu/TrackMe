@@ -17,7 +17,7 @@
         <activity
             android:name=".activities.RecordActivity"
             android:screenOrientation="portrait"></activity>
-        <service android:name=".services.LocationService" android:exported="false" android:description="@string/app_name"/>
+        <service android:name=".services.LocationService" android:exported="false" android:description="TrackMe - Best Tracking location for your workout sessions"/>
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="@string/google_api_key" />

@@ -67,7 +67,7 @@ object LocationHelper {
 
     fun timeInSeconds(points: String): Long {
         val pointArray = stringToArrayList(points)
-        if (pointArray.size < 2) return 0
+        if (pointArray.size < 2) return 1
         return pointArray[pointArray.size - 1].time/1000 - pointArray[0].time/1000
     }
 

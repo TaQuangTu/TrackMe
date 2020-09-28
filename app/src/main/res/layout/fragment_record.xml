@@ -6,7 +6,6 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".fragments.RecordFragment">
-
     <fragment
         android:layout_marginBottom="@dimen/margin_content"
         app:layout_constraintBottom_toTopOf="@+id/lnSessionInfo"
@@ -49,33 +48,44 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"/>
     </LinearLayout>
-    <LinearLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:visibility="gone"
         android:layout_marginBottom="@dimen/margin_screen"
-        android:orientation="horizontal"
         app:layout_constraintBottom_toTopOf="@+id/imvPause"
         android:id="@+id/lnActions"
-        android:weightSum="2"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
+
         <ImageView
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/button_selection"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/imvStop"
             android:padding="@dimen/padding_icon"
             android:layout_gravity="center"
             android:src="@drawable/ic_return"
             android:id="@+id/imvResume"
-            android:layout_weight="1"
-            android:layout_width="60dp"
-            android:layout_height="60dp"/>
+
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
         <ImageView
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/button_selection"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
             android:padding="@dimen/padding_icon"
             android:layout_gravity="center"
             android:src="@drawable/ic_stop"
             android:id="@+id/imvStop"
-            android:layout_weight="1"
-            android:layout_width="60dp"
-            android:layout_height="60dp"/>
-    </LinearLayout>
+            app:layout_constraintStart_toEndOf="@+id/imvResume"
+            app:layout_constraintTop_toTopOf="parent" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
     <ImageView
+        android:layout_width="40dp"
         android:layout_marginBottom="@dimen/margin_screen"
         android:src="@drawable/ic_pause"
         app:layout_constraintStart_toStartOf="parent"
@@ -83,6 +93,17 @@
         app:layout_constraintBottom_toBottomOf="parent"
         android:id="@+id/imvPause"
         android:padding="@dimen/padding_icon"
-        android:layout_width="60dp"
-        android:layout_height="60dp"/>
+        android:layout_height="40dp"
+        android:background="@drawable/button_selection" />
+
+    <ImageView
+        android:id="@+id/imvBoundMap"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_margin="@dimen/margin_screen"
+        android:background="@drawable/button_selection"
+        android:padding="@dimen/padding_icon"
+        android:src="@drawable/ic_focus"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 </androidx.constraintlayout.widget.ConstraintLayout>

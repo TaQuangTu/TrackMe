@@ -13,11 +13,14 @@ import kotlinx.android.synthetic.main.fragment_dialog_message.*
 class MessageDialog : DialogFragment() {
     private var mTitle: String = "Title"
     private var mContent: String = "Content"
+    private var mCancelMessage = "Cancel"
     private var mShowActionNextButton = false
+    private var mActionNextMessage = "OK"
     private var mListener: ActionClickListener? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        isCancelable = false
     }
 
     override fun onCreateView(
@@ -49,6 +52,8 @@ class MessageDialog : DialogFragment() {
         tvTitle.text = mTitle
         tvMessage.text = mContent
         btnCancel.visibility = if (mShowActionNextButton) VISIBLE else GONE
+        btnCancel.text = mCancelMessage
+        btnActionNext.text = mActionNextMessage
     }
 
     fun setTitle(title: String) {
@@ -69,7 +74,12 @@ class MessageDialog : DialogFragment() {
         val ACTION_CANCEL = 0
         val ACTION_NEXT = 1
     }
-
+    fun setActionNextMessage(message:String){
+        mActionNextMessage = message
+    }
+    fun setCancelMessage(message:String){
+        mCancelMessage = message
+    }
     interface ActionClickListener {
         fun onActionClicked(action: Int)
     }
