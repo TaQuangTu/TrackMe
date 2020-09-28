@@ -1,7 +1,7 @@
 package com.example.trackme.activities
 
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import androidx.appcompat.app.AppCompatActivity
 import com.example.trackme.R
 import com.example.trackme.fragments.RecordFragment
 
