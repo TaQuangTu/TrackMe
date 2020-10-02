@@ -4,8 +4,8 @@
         <layer-list>
             <item>
                 <shape android:shape="oval">
-                    <solid android:color="@color/gray_70"/>
-                    <size android:width="48dp" android:height="48dp"/>
+                    <solid android:color="@color/gray_70" />
+                    <size android:width="48dp" android:height="48dp" />
                 </shape>
             </item>
             <item android:drawable="@drawable/ic_record" android:gravity="center">
@@ -14,5 +14,17 @@
         </layer-list>
     </item>
 
-    <item android:drawable="@drawable/ic_record"/>
+    <item >
+        <layer-list>
+            <item>
+                <shape android:shape="oval">
+                    <solid android:color="@color/black" />
+                    <size android:width="48dp" android:height="48dp" />
+                </shape>
+            </item>
+            <item android:drawable="@drawable/ic_record" android:gravity="center">
+
+            </item>
+        </layer-list>
+    </item>
 </selector>

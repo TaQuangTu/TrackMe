@@ -29,10 +29,11 @@
             android:layout_height="wrap_content"/>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-    <Button
+    <ImageView
+        android:src="@drawable/button_start_record"
         app:layout_constraintDimensionRatio="1:1"
         android:layout_height="0dp"
-        android:background="@drawable/button_start_record"
+        android:scaleType="centerInside"
         android:layout_marginBottom="@dimen/margin_screen"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
