@@ -24,7 +24,7 @@ object LocationHelper {
         }
     }
 
-    //lat1,lng1,time,session_id*lat2,lng2,time,session_id
+    //lat1,lng1,time*lat2,lng2,time
     fun stringToArrayList(points: String): ArrayList<Point> {
         val result = ArrayList<Point>()
         val pointArray = points.split("*")
@@ -50,7 +50,7 @@ object LocationHelper {
             Location.distanceBetween(sP.lat, sP.lng, eP.lat, eP.lng, res)
             distance += res[0]
         }
-        return distance
+        return (distance*100).roundToInt()/100.0
     }
 
     fun distance(pointArray: ArrayList<Point>): Double {
@@ -62,18 +62,18 @@ object LocationHelper {
             Location.distanceBetween(sP.lat, sP.lng, eP.lat, eP.lng, res)
             distance += res[0]
         }
-        return distance.roundToInt().toDouble()
+        return (distance*100).roundToInt()/100.0
     }
 
     fun timeInSeconds(points: String): Long {
         val pointArray = stringToArrayList(points)
         if (pointArray.size < 2) return 1
-        return pointArray[pointArray.size - 1].time/1000 - pointArray[0].time/1000
+        return pointArray[pointArray.size - 1].time - pointArray[0].time
     }
 
     fun timeInSeconds(pointArray: ArrayList<Point>): Long {
-        if (pointArray.size < 2) return 0
-        return (pointArray[pointArray.size - 1].time - pointArray[0].time) / 1000
+        if (pointArray.size < 2) return 1
+        return (pointArray[pointArray.size - 1].time - pointArray[0].time)
     }
 
     fun avgVelocity(points: ArrayList<Point>): Double {
@@ -88,9 +88,11 @@ object LocationHelper {
         return Math.round(distance / time * 100) / 100.0 //take two digits after decimal
     }
 
-    fun pointsToLatLngs(points: ArrayList<Point>): ArrayList<LatLng> {
+    fun pointsToLatLngs(points: ArrayList<Point>,makeSmoothPath:Boolean = false): ArrayList<LatLng> {
+        var pointss = points
+        if(makeSmoothPath) pointss = smoothPath(points)
         val results = ArrayList<LatLng>()
-        for (point in points) {
+        for (point in pointss) {
             results.add(LatLng(point.lat, point.lng))
         }
         return results
@@ -132,7 +134,7 @@ object LocationHelper {
     /**
      * this function is used to remove points that are similar to each other, it helps making google static map URL shorter
      */
-    fun smoothPath(points: ArrayList<Point>): ArrayList<Point> {
+    private fun smoothPath(points: ArrayList<Point>): ArrayList<Point> {
         val threshold = 2f //2 meter
         if (points.size <= 50) { //it's ok for google static map API with an array of points of size 50
             return points

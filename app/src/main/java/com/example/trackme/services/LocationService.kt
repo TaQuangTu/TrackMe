@@ -20,8 +20,10 @@ import com.example.trackme.fragments.RecordFragment.Companion.ACTION_ASK_FOR_RUN
 import com.example.trackme.fragments.RecordFragment.Companion.RECORD_STATE
 import com.example.trackme.fragments.RecordFragment.Companion.SESSION_ID
 import com.example.trackme.utils.LocationHelper
+import com.example.trackme.utils.TimerHelper
 import com.example.trackme.viewmodels.RecordViewModel.Companion.STATE_PAUSE
 import com.example.trackme.viewmodels.RecordViewModel.Companion.STATE_RECORDING
+import com.example.trackme.viewmodels.RecordViewModel.Companion.STATE_STOPPED
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -35,11 +37,9 @@ class LocationService : Service() {
     private lateinit var mLocationCallback: LocationCallback
     private lateinit var mSessionId: String
     private var mPoints: String = ""  //recorded points will be save under string format
-    var mRecordState = STATE_RECORDING
+    private var mRecordState = STATE_RECORDING
 
     companion object {
-        const val TAG = "location service test"
-
         const val NOTIFICATION_ID = 1
         const val NOTIFICATION_CHANEL_ID = "LOCATION_CHANEL_ID"
         const val NOTIFICATION_CHANEL_NAME = "Location chanel"
@@ -61,8 +61,8 @@ class LocationService : Service() {
         const val LNG = "LNG"
         const val TIME = "TIME"
 
-        const val LOCATION_REQUEST_INTERVAL = 5000L
-        const val LOCATION_REQUEST_FASTEST_INTERVAL = 2000L
+        const val LOCATION_REQUEST_INTERVAL = 2000L
+        const val LOCATION_REQUEST_FASTEST_INTERVAL = 1000L
         const val LOCATION_REQUEST_PRIORITY = LocationRequest.PRIORITY_HIGH_ACCURACY
 
         object LocationUtils {
@@ -80,6 +80,7 @@ class LocationService : Service() {
     override fun onCreate() {
         super.onCreate()
         registReceivers()
+        TimerHelper.resetTimerAndStart()
     }
 
     override fun onBind(intent: Intent?): IBinder? {
@@ -104,14 +105,8 @@ class LocationService : Service() {
         }
         mSessionId = intent!!.getStringExtra(SESSION_ID)!!
         listenToLocationUpdate()
-        return START_STICKY
+        return START_REDELIVER_INTENT
     }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        mFusedLocationProviderClient.removeLocationUpdates(mLocationCallback)
-    }
-
     @SuppressLint("MissingPermission")
     fun listenToLocationUpdate() {
         mFusedLocationProviderClient = FusedLocationProviderClient(this)
@@ -119,10 +114,11 @@ class LocationService : Service() {
             override fun onLocationResult(p0: LocationResult?) {
                 p0?.let {
                     if (mRecordState == STATE_RECORDING) {
+                        TimerHelper.continueTimer()
                         val intent = Intent()
                         val lat = p0.lastLocation.latitude
                         val lng = p0.lastLocation.longitude
-                        val time = System.currentTimeMillis()
+                        val time = TimerHelper.getCurrentTimeInSecond()
                         intent.action = ACTION_LOCATION_UPDATE
                         intent.putExtra(LAT, lat)
                         intent.putExtra(LNG, lng)
@@ -151,6 +147,7 @@ class LocationService : Service() {
                 if (intent.action == ACTION_ACTIVITY_CONTROL_CHANGE) {
                     val action = intent.getIntExtra(RECORD_STATE, STATE_RECORDING)
                     if (action == ACTION_STOP) {
+                        TimerHelper.resetTimer()
                         saveToDatabase().subscribeOn(Schedulers.newThread())
                             .observeOn(AndroidSchedulers.mainThread()).subscribe(
                                 {
@@ -169,8 +166,11 @@ class LocationService : Service() {
                             )
                     } else if (action == ACTION_PAUSE) {
                         mRecordState = STATE_PAUSE
+                        TimerHelper.pauseTimer()
                     } else if (action == ACTION_RESUME) {
                         mRecordState = STATE_RECORDING
+                        //TimerHelper.continueTimer()
+                        //don't start timer right there, start timer when we first find user's position
                     }
                 } else if (intent.action == ACTION_ASK_FOR_RUNNING_STATE) {
                     //save all points at this time
@@ -208,5 +208,10 @@ class LocationService : Service() {
                 database.historyDao().insertAll(newHistory)
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        mFusedLocationProviderClient.removeLocationUpdates(mLocationCallback)
     }
 }

@@ -3,6 +3,7 @@ package com.example.trackme.adapters
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.text.HtmlCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.trackme.R
@@ -33,15 +34,26 @@ class HistoriesAdapter : RecyclerView.Adapter<HistoriesAdapter.HistoryViewHolder
     override fun onBindViewHolder(holder: HistoryViewHolder, position: Int) {
         val history = mData!![position]
         history?.let {
-            Glide.with(holder.itemView.context).load(LocationHelper.getStaticMapUrl(history)).placeholder(R.drawable.place_holder_map)
+            Glide.with(holder.itemView.context).load(LocationHelper.getStaticMapUrl(history))
+                .placeholder(R.drawable.place_holder_map)
                 .into(holder.itemView.imvMap)
             val distance = LocationHelper.distance(history.points)
             val time = LocationHelper.timeInSeconds(history.points)
             val velocity = LocationHelper.avgVelocity(history.points)
-            holder.itemView.tvDistance.text = "Distance\n" + (distance*100).toLong()/100f + " meters"
-            holder.itemView.tvVelocity.text = "Velocity\n" + velocity + " m/s"
-            holder.itemView.tvTime.text =
-                "Duration\n" + time / 3600 + ":" + (time % 3600) / 60 + ":" + (time % 3600) % 60
+
+            holder.itemView.tvDistance.text =
+                HtmlCompat.fromHtml(
+                    "<b>Distance</b><br>" + distance + " meters",
+                    HtmlCompat.FROM_HTML_MODE_LEGACY
+                )
+            holder.itemView.tvVelocity.text = HtmlCompat.fromHtml(
+                "<b>Velocity</b><br>" + velocity + " m/s",
+                HtmlCompat.FROM_HTML_MODE_LEGACY
+            )
+            holder.itemView.tvTime.text = HtmlCompat.fromHtml(
+                "<b>Duration</b><br>" + time / 3600 + ":" + (time % 3600) / 60 + ":" + (time % 3600) % 60,
+                HtmlCompat.FROM_HTML_MODE_LEGACY
+            )
         }
     }
 }

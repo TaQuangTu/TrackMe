@@ -7,6 +7,7 @@ import android.view.View.GONE
 import android.view.View.VISIBLE
 import android.view.ViewGroup
 import androidx.fragment.app.DialogFragment
+import androidx.fragment.app.FragmentManager
 import com.example.trackme.R
 import kotlinx.android.synthetic.main.fragment_dialog_message.*
 
@@ -17,7 +18,7 @@ class MessageDialog : DialogFragment() {
     private var mShowActionNextButton = false
     private var mActionNextMessage = "OK"
     private var mListener: ActionClickListener? = null
-
+    private var mIsShowing = false
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         isCancelable = false
@@ -70,16 +71,32 @@ class MessageDialog : DialogFragment() {
     fun setListener(listener: ActionClickListener){
         mListener = listener
     }
+
     companion object {
         val ACTION_CANCEL = 0
         val ACTION_NEXT = 1
     }
-    fun setActionNextMessage(message:String){
+
+    fun setActionNextMessage(message: String) {
         mActionNextMessage = message
     }
-    fun setCancelMessage(message:String){
+
+    fun setCancelMessage(message: String) {
         mCancelMessage = message
     }
+
+    override fun show(manager: FragmentManager, tag: String?) {
+        if (!mIsShowing) {
+            manager.beginTransaction().add(this,tag).commitNowAllowingStateLoss()
+            mIsShowing = true
+        }
+    }
+
+    override fun dismiss() {
+        super.dismiss()
+        mIsShowing = false
+    }
+
     interface ActionClickListener {
         fun onActionClicked(action: Int)
     }

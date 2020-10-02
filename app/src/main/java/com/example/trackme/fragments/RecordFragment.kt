@@ -1,6 +1,8 @@
 package com.example.trackme.fragments
 
 import android.Manifest
+import android.app.Activity.RESULT_CANCELED
+import android.app.Activity.RESULT_OK
 import android.app.ActivityManager
 import android.content.*
 import android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -16,6 +18,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.core.text.HtmlCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
@@ -39,10 +42,12 @@ import com.example.trackme.services.LocationService.Companion.LNG
 import com.example.trackme.services.LocationService.Companion.SAVING_RESULT
 import com.example.trackme.services.LocationService.Companion.TIME
 import com.example.trackme.utils.LocationHelper
+import com.example.trackme.utils.TimerHelper
 import com.example.trackme.utils.ViewHelper
 import com.example.trackme.viewmodels.RecordViewModel
 import com.example.trackme.viewmodels.RecordViewModel.Companion.STATE_PAUSE
 import com.example.trackme.viewmodels.RecordViewModel.Companion.STATE_RECORDING
+import com.example.trackme.viewmodels.RecordViewModel.Companion.STATE_STOPPED
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.LocationSettingsRequest
@@ -58,6 +63,7 @@ import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.gms.tasks.Task
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import kotlinx.android.synthetic.main.fragment_record.*
 import java.util.*
@@ -80,6 +86,8 @@ class RecordFragment : Fragment(), OnMapReadyCallback, View.OnClickListener {
     private val mLoadingDialog: LoadingDialog = LoadingDialog("Loading session")
     private var mNeedToBoundMap = true
     private var mGotoSettings = false
+    private var mUserAllowGPS = true
+    private var mDisposables = CompositeDisposable()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -94,7 +102,7 @@ class RecordFragment : Fragment(), OnMapReadyCallback, View.OnClickListener {
         mFragmentMap = childFragmentManager.findFragmentByTag("fragmentMap") as SupportMapFragment
         mFragmentMap.getMapAsync(this)
 
-        observeViewModel()
+        observeDataChanges()
 
         imvPause.setOnClickListener(this)
         imvResume.setOnClickListener(this)
@@ -102,25 +110,29 @@ class RecordFragment : Fragment(), OnMapReadyCallback, View.OnClickListener {
         imvBoundMap.setOnClickListener(this)
     }
 
-    fun observeViewModel() {
+    fun observeDataChanges() {
         mViewModel.mNewPoint.observe(viewLifecycleOwner,
             Observer<Point> {
                 onNewPoint(it)
-            })
-        mViewModel.mRecordState.observe(viewLifecycleOwner,
-            Observer<Int> {
-                presentData()
             })
         mViewModel.mPointArray.observe(viewLifecycleOwner,
             Observer<ArrayList<Point>> {
                 presentData()
             })
+        val disposable = TimerHelper.getObservableTime().subscribeOn(Schedulers.computation())
+            .observeOn(AndroidSchedulers.mainThread()).subscribe(
+                {
+                    presentSessionInfo()
+                },
+                {
+                    Toast.makeText(context!!, it.localizedMessage, Toast.LENGTH_SHORT).show()
+                })
+        mDisposables.add(disposable)
     }
 
     private fun onNewPoint(point: Point) {
         presentData()
     }
-
     private fun requestLocationPermission() {
         //it means that user checked "don't ask again"
         if (shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION)) {
@@ -200,6 +212,7 @@ class RecordFragment : Fragment(), OnMapReadyCallback, View.OnClickListener {
                 it.putExtra(SESSION_ID, mViewModel.mSessionId.value)
                 ContextCompat.startForegroundService(context!!, it)
             }
+            mViewModel.mRecordState.value = STATE_RECORDING
         } else { //ask for state of running service (pause or running)
             showLoading("Loading running session")
             context!!.sendBroadcast(Intent().apply {
@@ -212,7 +225,12 @@ class RecordFragment : Fragment(), OnMapReadyCallback, View.OnClickListener {
     override fun onResume() {
         super.onResume()
         if (isLocationPermissionGuaranteed()) {
-            checkLocationSettingsAndStart() //check if internet, GPS are turned ON and start immediately if they are
+            if (!mUserAllowGPS) { //location permission is allowed but user does not allow local GPS turning ON
+                showTurnOnLocationRequest()
+            } else {
+                checkLocationSettingsAndStart() //check if internet, GPS are turned ON and start immediately if they are
+            }
+
         } else {
             requestLocationPermission()
         }
@@ -220,17 +238,45 @@ class RecordFragment : Fragment(), OnMapReadyCallback, View.OnClickListener {
     }
 
     private fun presentData() {
+        presentSessionInfo()
+        presentMap()
+    }
+
+    //distance, duration, velocity
+    private fun presentSessionInfo() {
         if (mViewModel.mRecordState.value == STATE_RECORDING) {
             lnActions.visibility = GONE
             imvPause.visibility = VISIBLE
         } else if (mViewModel.mRecordState.value == STATE_PAUSE) {
             lnActions.visibility = VISIBLE
             imvPause.visibility = GONE
+        } else { //STOPPED
+            lnActions.visibility = GONE
+            imvPause.visibility = GONE
         }
+        val distance = LocationHelper.distance(mViewModel.mPointArray.value!!)
+        val time = TimerHelper.getCurrentTimeInSecond()
+        val velocity =
+            (distance / time.toFloat() * 100).toInt() / 100f //get two digit after decimal point
+        tvDistance.text = HtmlCompat.fromHtml(
+            "<b>Distance</b><br>" + distance + " meters",
+            HtmlCompat.FROM_HTML_MODE_LEGACY
+        )
+        tvVelocity.text = HtmlCompat.fromHtml(
+            "<b>Velocity</b><br>" + velocity + " m/s",
+            HtmlCompat.FROM_HTML_MODE_LEGACY
+        )
+        tvTime.text = HtmlCompat.fromHtml(
+            "<b>Duration</b><br>" + time / 3600 + ":" + (time % 3600) / 60 + ":" + (time % 3600) % 60,
+            HtmlCompat.FROM_HTML_MODE_LEGACY
+        )
+    }
+
+    fun presentMap() {
         if (mGoogleMap != null && !mViewModel.mPointArray.value.isNullOrEmpty()) {
             mGoogleMap?.let {
                 it.clear()
-                val latlngs = LocationHelper.pointsToLatLngs(mViewModel.mPointArray.value!!)
+                val latlngs = LocationHelper.pointsToLatLngs(mViewModel.mPointArray.value!!, true)
                 it.addPolyline(PolylineOptions().addAll(latlngs).color(Color.BLUE).width(7f))
                 //draw last point
                 val lastPointView = ImageView(context!!, null)
@@ -257,15 +303,7 @@ class RecordFragment : Fragment(), OnMapReadyCallback, View.OnClickListener {
                     mNeedToBoundMap = false
                 }
             }
-            val distance = LocationHelper.distance(mViewModel.mPointArray.value!!)
-            val time = LocationHelper.timeInSeconds(mViewModel.mPointArray.value!!)
-            val velocity = LocationHelper.avgVelocity(mViewModel.mPointArray.value!!)
-            tvDistance.text = "Distance\n " + distance + " meters"
-            tvVelocity.text = "Velocity\n " + velocity + " m/s"
-            tvTime.text =
-                "Duration\n" + time / 3600 + ":" + (time % 3600) / 60 + ":" + (time % 3600) % 60
         }
-
     }
 
     private fun checkLocationSettingsAndStart() {
@@ -305,8 +343,34 @@ class RecordFragment : Fragment(), OnMapReadyCallback, View.OnClickListener {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQUEST_PERMISSION_CODE) {
-
+            if (resultCode == RESULT_OK) {
+                mUserAllowGPS = true //user allow turning on GPS
+            } else if (resultCode == RESULT_CANCELED) {
+                mUserAllowGPS = false
+            }
         }
+    }
+
+    private fun showTurnOnLocationRequest() {
+        mMessageDialog.apply {
+            setTitle("Location")
+            setContent("You must turn on GPS to start tracking")
+            setShowActionButton(true)
+            setActionNextMessage("Continue")
+            setCancelMessage("Exit")
+            setListener(object : MessageDialog.ActionClickListener {
+                override fun onActionClicked(action: Int) {
+                    if (action == MessageDialog.ACTION_CANCEL) {
+                        mUserAllowGPS = false
+                        activity!!.finish()
+                    } else if (action == MessageDialog.ACTION_NEXT) {
+                        mUserAllowGPS = true
+                        checkLocationSettingsAndStart()
+                    }
+                }
+            })
+        }
+        mMessageDialog.show(childFragmentManager, MessageDialog.javaClass.name)
     }
 
     private fun showPermissionExplanationDialog() {
@@ -357,13 +421,6 @@ class RecordFragment : Fragment(), OnMapReadyCallback, View.OnClickListener {
         startActivity(intent)
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        mLocationBroadcastReceiver?.let {
-            context!!.unregisterReceiver(it)
-        }
-    }
-
     override fun onMapReady(p0: GoogleMap?) {
         mGoogleMap = p0
     }
@@ -372,15 +429,20 @@ class RecordFragment : Fragment(), OnMapReadyCallback, View.OnClickListener {
         if (v == imvPause) {
             mViewModel.mRecordState.value = STATE_PAUSE
             sendActionBroadcast(ACTION_PAUSE)
+            presentSessionInfo()
         } else if (v == imvResume) {
             mViewModel.mRecordState.value = STATE_RECORDING
+            showLoading("Finding your position....")
             sendActionBroadcast(ACTION_RESUME)
+            presentSessionInfo()
         } else if (v == imvStop) {
+            mViewModel.mRecordState.value = STATE_STOPPED
             showLoading("Saving session...")
             sendActionBroadcast(ACTION_STOP)
+            presentSessionInfo()
         } else if (v == imvBoundMap) {
             mNeedToBoundMap = true
-            presentData()
+            presentMap()
         }
     }
 
@@ -411,12 +473,16 @@ class RecordFragment : Fragment(), OnMapReadyCallback, View.OnClickListener {
             })
     }
 
-    fun showLoading(text: String = "Loading session data") {
-        mLoadingDialog.show(childFragmentManager, "LOADING_DIALOG", text)
+    fun showLoading(text: String = "Loading...") {
+        if (isAdded) { //make sure RecordFragment has been attached to activity, so childFragmentManager will be available
+            mLoadingDialog.show(childFragmentManager, "LOADING_DIALOG", text)
+        }
     }
 
     fun hideLoading() {
-        mLoadingDialog.dismissNow(childFragmentManager)
+        if (isAdded) {//make sure RecordFragment has been attached to activity, so childFragmentManager will be available
+            mLoadingDialog.dismissNow(childFragmentManager)
+        }
     }
 
     fun onBackPressed() {
@@ -425,5 +491,13 @@ class RecordFragment : Fragment(), OnMapReadyCallback, View.OnClickListener {
         } else {
             activity!!.finish()
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        mLocationBroadcastReceiver?.let {
+            context!!.unregisterReceiver(it)
+        }
+        mDisposables.dispose()
     }
 }
